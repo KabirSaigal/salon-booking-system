@@ -39,7 +39,23 @@ cd salon-booking-system
 npm install
 ```
 
-3. Create a `.env` file in the root directory with your Firebase configuration:
+3. Set up environment variables:
+   - Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+   - Update the `.env` file with your Firebase configuration values
+   - Never commit the `.env` file to version control
+
+4. Start the development server:
+```bash
+npm run dev
+```
+
+## Environment Variables
+
+The following environment variables are required:
+
 ```env
 VITE_FIREBASE_API_KEY=your_api_key
 VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
@@ -50,10 +66,12 @@ VITE_FIREBASE_APP_ID=your_app_id
 VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
 ```
 
-4. Start the development server:
-```bash
-npm run dev
-```
+To get these values:
+1. Go to your Firebase Console
+2. Select your project
+3. Go to Project Settings
+4. Under "Your apps", find your web app configuration
+5. Copy the values from the configuration object
 
 ## Deployment
 
@@ -70,6 +88,13 @@ npm run deploy
 ```
 
 The site will be available at: https://kabirg.github.io/salon-booking-system
+
+### Important Deployment Notes
+
+1. Make sure your Firebase project is properly configured for production
+2. Set up the environment variables in your deployment environment
+3. Configure Firebase Security Rules for production
+4. Enable necessary Firebase services (Authentication, Firestore, Storage)
 
 ## Contributing
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signIn } from '../firebase/services/auth';
 import { useAuth } from '../contexts/AuthContext';
+import { loginRateLimiter } from '../utils/rateLimiter';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -12,6 +13,8 @@ const Login = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
 
   // Redirect if already logged in as admin
   useEffect(() => {
@@ -20,13 +23,36 @@ const Login = () => {
     }
   }, [user, isAdmin, navigate]);
 
+  // Check rate limit status
+  useEffect(() => {
+    const checkRateLimit = () => {
+      const { blocked, timeLeft } = loginRateLimiter.isBlocked(credentials.email);
+      setBlocked(blocked);
+      setTimeLeft(timeLeft);
+    };
+
+    if (credentials.email) {
+      checkRateLimit();
+    }
+  }, [credentials.email]);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Check rate limit before attempting login
+    const { blocked, timeLeft } = loginRateLimiter.isBlocked(credentials.email);
+    if (blocked) {
+      setError(`Too many login attempts. Please try again in ${timeLeft} seconds.`);
+      return;
+    }
+
     setLoading(true);
 
     try {
       await signIn(credentials.email, credentials.password);
+      // Reset rate limiter on successful login
+      loginRateLimiter.reset(credentials.email);
       // Navigation will happen automatically through the useEffect above
     } catch (error) {
       console.error('Login error:', error);
@@ -78,7 +104,7 @@ const Login = () => {
                 onChange={(e) =>
                   setCredentials({ ...credentials, email: e.target.value })
                 }
-                disabled={loading}
+                disabled={loading || blocked}
               />
             </div>
             <div>
@@ -96,7 +122,7 @@ const Login = () => {
                 onChange={(e) =>
                   setCredentials({ ...credentials, password: e.target.value })
                 }
-                disabled={loading}
+                disabled={loading || blocked}
               />
             </div>
           </div>
@@ -107,10 +133,16 @@ const Login = () => {
             </div>
           )}
 
+          {blocked && (
+            <div className="text-red-600 text-sm text-center bg-red-50 p-3 rounded-md">
+              Too many login attempts. Please try again in {timeLeft} seconds.
+            </div>
+          )}
+
           <div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || blocked}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
@@ -121,6 +153,8 @@ const Login = () => {
                   </svg>
                   Signing in...
                 </span>
+              ) : blocked ? (
+                'Account Temporarily Locked'
               ) : (
                 'Sign in'
               )}

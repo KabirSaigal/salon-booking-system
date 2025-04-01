@@ -1,0 +1,44 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Validate file type
+    function isValidImageType() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    // Validate file size (max 5MB)
+    function isValidFileSize() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // Service images
+    match /services/{imageId} {
+      allow read: if true;  // Public read access
+      allow write: if isAdmin() && isValidImageType() && isValidFileSize();
+    }
+
+    // User avatars
+    match /avatars/{userId} {
+      allow read: if true;  // Public read access
+      allow write: if isAuthenticated() && 
+        request.auth.uid == userId && 
+        isValidImageType() && 
+        isValidFileSize();
+    }
+
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+} 
